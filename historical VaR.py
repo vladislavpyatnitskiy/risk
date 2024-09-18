@@ -1,31 +1,36 @@
-def histVaR(x, VaR, lg=True):
+import numpy as np
+import pandas as pd
+
+def histVaR(data, VaR, log_returns=True):
     """
-    Calculate VaR via Historical Method.
-
-    Parameters:
-    - x: DataFrame with financial data.
-    - VaR: Value at Risk percentage (e.g., 95 for 95% VaR).
-    - lg: If True, calculate log returns.
-
-    Returns:
-    - DataFrame containing VaR values for each column.
+    Calculate Value at Risk (VaR) via Historical Method.
+    
+    :param data: A DataFrame or NumPy array of stock price data.
+    :param VaR: The desired confidence level for VaR (e.g., 95 for 95% VaR).
+    :param log_returns: Whether to calculate log returns (True by default).
+    :return: A NumPy array or DataFrame with the VaR values.
     """
-
-    # Check whether there are less than 100 observations
-    if len(x) < 100:
+    
+    # Check if there are less than 100 observations
+    if len(data) < 100:
         print("Insufficient number of observations.")
-    else:
-        if lg:
-            x = np.diff(np.log(x), axis=0)[1:]  # log returns and remove NA
+        return None
+    
+    # Calculate log returns if log_returns is True
+    if log_returns:
+        data = np.log(data / data.shift(1)).dropna()  # Log returns
+    
+    # Calculate the historical VaR (quantile of the distribution)
+    var_values = data.apply(lambda col: np.percentile(col, 100 - VaR), axis=0)
+    
+    # Convert to a DataFrame to display results
+    var_df = pd.DataFrame(var_values)
+    var_df.columns = [f"VaR {VaR}%"]
+    
+    return var_df
 
-        # Calculate historical VaR value and transform into DataFrame format
-        VaR_values = np.quantile(x, 1 - VaR * 0.01, axis=0)
-        result_df = pd.DataFrame(VaR_values.reshape(1, -1),
-                                 columns=[f"VaR {VaR}%"])
-
-        return result_df
-
+# Test with stock data
+# Example: stock_data is assumed to be a DataFrame with columns of stock prices
+# stock_data = pd.read_csv('your_data.csv')
 # Test
-# Assuming stock_data is a DataFrame with financial data
-# Make sure to replace stock_data with your actual DataFrame
-histVaR(result.iloc[:,1], 99)
+histVaR(result, 95)
