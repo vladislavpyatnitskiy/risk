@@ -1,15 +1,32 @@
 import numpy as np
 import pandas as pd
+import yfinance as yf
 
-def histCVaR(data, CVaR, log_returns=True):
-    """
-    Calculate Expected Shortfall (CVaR) via Historical Method.
+def histCVaR(y, s=None, e=None, CVaR=95, log_returns=True):
+    p = pd.DataFrame()  # Create an empty DataFrame
+
+    # Loop for data extraction & Set up statements for start and end dates
+    for ticker in y:
+        if s is None and e is None:
+            # When neither start date nor end date is defined
+            data = yf.download(ticker, start="2007-01-01")
+        elif e is None:
+            data = yf.download(ticker, start=s) # Only start date is defined
+        elif s is None:
+            data = yf.download(ticker, end=e)  # When only end date is defined
+        else:
+            # When both start date and end date are defined
+            data = yf.download(ticker, start=s, end=e)
+
+        # Extract the Adjusted Close prices and add to the DataFrame
+        if not data.empty:
+            p[ticker] = data[('Close', f'{ticker}')]
+
+    p = p.dropna() # Drop rows with NA values
     
-    :param data: A DataFrame or NumPy array of stock price data.
-    :param CVaR: The desired confidence level for CVaR (e.g., 95 for 95% CVaR).
-    :param log_returns: Whether to calculate log returns (True by default).
-    :return: A DataFrame with CVaR values for each column (asset).
-    """
+    p.columns = y
+  
+    data = p
     
     # Check if there are less than 100 observations
     if len(data) < 100:
@@ -36,7 +53,4 @@ def histCVaR(data, CVaR, log_returns=True):
     # Create a DataFrame to display CVaR values for each column
     return pd.DataFrame(ES, index=data.columns, columns=[f"CVaR {CVaR}%"])
 
-# Test with stock data
-# Example: stock_data is assumed to be a DataFrame with columns of stock prices
-# stock_data = pd.read_csv('your_data.csv')
-histCVaR(result, 95, True)
+histCVaR(y=["UNM", "AIG", "OMF", "MET", "HIG"], s="2022-01-01")
