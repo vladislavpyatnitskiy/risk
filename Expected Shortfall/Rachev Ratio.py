@@ -1,25 +1,49 @@
 import numpy as np
 import pandas as pd
+import yfinance as yf
 
-def Rachev_ratio(x, VaR, log_returns=True):
+def Rachev_ratio(y, s=None, e=None, VaR=95, log_returns=True):
+    p = pd.DataFrame()  # Create an empty DataFrame
+
+    # Loop for data extraction & Set up statements for start and end dates
+    for ticker in y:
+        if s is None and e is None:
+            # When neither start date nor end date is defined
+            data = yf.download(ticker, start="2007-01-01")
+        elif e is None:
+            data = yf.download(ticker, start=s) # Only start date is defined
+        elif s is None:
+            data = yf.download(ticker, end=e)  # When only end date is defined
+        else:
+            # When both start date and end date are defined
+            data = yf.download(ticker, start=s, end=e)
+
+        # Extract the Adjusted Close prices and add to the DataFrame
+        if not data.empty:
+            p[ticker] = data[('Close', f'{ticker}')]
+
+    p = p.dropna() # Drop rows with NA values
+    
+    p.columns = y
+  
     # Check if there are fewer than 100 observations
-    if len(x) < 100:
+    if len(p) < 100:
         print("Error. Insufficient number of observations.")
         return
     
     # Calculate log returns if requested and remove NA values
     if log_returns:
-        x = np.log(x / x.shift(1)).dropna()
+        p = np.log(p / p.shift(1)).dropna()
     
-    L = pd.DataFrame(index=x.columns)  # Initialize with asset names as index
+    L = pd.DataFrame(index=p.columns)  # Initialize with asset names as index
     
     # Loop over VaR values
     for m in range(len(VaR)):
         rachev = []
         
         # Loop over columns (assets) in x
-        for col in x.columns:
-            es = x[col].sort_values()  # Sort in ascending order
+        for col in p.columns:
+            es = p[col].sort_values()  # Sort in ascending order
             
             # Calculate Rachev ratio
             lower_tail = es.iloc[:int((1 - VaR[m] * 0.01) * len(es))]
@@ -32,7 +56,7 @@ def Rachev_ratio(x, VaR, log_returns=True):
     
     return L
 
-# Example usage:
-# Assuming stock_data is a pandas DataFrame with price data
-# stock_data = pd.read_csv("your_data.csv")
-Rachev_ratio(result, [95, 97.5, 99])
+Rachev_ratio(
+  y=["UNM", "AIG", "OMF", "MET", "HIG"], s="2022-01-01", 
+  VaR=[95, 97.5, 99]
+  )
